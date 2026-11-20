@@ -11,16 +11,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: List files
-        run: ls -la
-
       - name: Unzip project
         run: |
+          echo "=== Files in repo ==="
+          ls -la
           unzip -o *.zip -d project
           if [ -d project/ClipsKittyAndroid ]; then
+            shopt -s dotglob
             mv project/ClipsKittyAndroid/* project/ 2>/dev/null || true
-            mv project/ClipsKittyAndroid/.* project/ 2>/dev/null || true
+            shopt -u dotglob
           fi
+          echo "=== Project contents ==="
           ls -la project/
 
       - name: Set up JDK 17
@@ -31,15 +32,18 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+
+      - name: Accept licenses
+        run: yes | sdkmanager --licenses || true
 
       - name: Make gradlew executable
-        run: |
-          cd project
-          chmod +x gradlew
+        run: chmod +x project/gradlew
 
       - name: Build Debug APK
         working-directory: project
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

@@ -8,20 +8,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Unzip project
         run: |
-          echo "=== Files in repo ==="
-          ls -la
           unzip -o *.zip -d project
           if [ -d project/ClipsKittyAndroid ]; then
             shopt -s dotglob
-            mv project/ClipsKittyAndroid/* project/ 2>/dev/null || true
+            mv project/ClipsKittyAndroid/* project/
             shopt -u dotglob
           fi
-          echo "=== Project contents ==="
           ls -la project/
 
       - name: Set up JDK 17
@@ -38,16 +35,26 @@ jobs:
       - name: Accept licenses
         run: yes | sdkmanager --licenses || true
 
+      - name: Configure Gradle memory
+        run: |
+          cd project
+          echo "org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8" > gradle.properties
+          echo "org.gradle.daemon=false" >> gradle.properties
+          echo "org.gradle.parallel=false" >> gradle.properties
+          echo "org.gradle.workers.max=2" >> gradle.properties
+          echo "android.useAndroidX=true" >> gradle.properties
+          cat gradle.properties
+
       - name: Make gradlew executable
         run: chmod +x project/gradlew
 
       - name: Build Debug APK
         working-directory: project
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ClipsKitty-debug-apk
-          path: project/app/build/outputs/apk/debug/app-debug.apk
+          path: project/app/build/outputs/apk/debug/*.apk
           retention-days: 5
